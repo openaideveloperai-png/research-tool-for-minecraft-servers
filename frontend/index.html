@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MC Sentinel</title>
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+<div id="login" class="login" hidden>
+  <form id="login-form" class="card login-card">
+    <h1>MC Sentinel</h1>
+    <p class="muted">Minecraft server security intelligence &amp; moderation federation</p>
+    <label>Admin token <input id="token" type="password" autocomplete="current-password" required></label>
+    <button class="primary" type="submit">Sign in</button>
+    <p id="login-err" class="err"></p>
+  </form>
+</div>
+
+<div id="app" class="shell" hidden>
+  <nav class="side">
+    <div class="brand">MC Sentinel</div>
+    <button data-view="overview" class="nav active">Overview</button>
+    <button data-view="discovery" class="nav">Discovery</button>
+    <button data-view="servers" class="nav">Server index</button>
+    <button data-view="players" class="nav">Player search</button>
+    <button data-view="identity" class="nav">Cracked-account tools</button>
+    <button data-view="alerts" class="nav">Security alerts</button>
+    <button data-view="federation" class="nav">Moderation federation</button>
+    <div class="side-foot"><button id="logout" class="link">Sign out</button></div>
+  </nav>
+
+  <main>
+    <!-- OVERVIEW -->
+    <section id="view-overview" class="view">
+      <header><h2>Overview</h2><button class="ghost" data-refresh="overview">Refresh</button></header>
+      <div id="stat-tiles" class="tiles"></div>
+      <div class="grid2">
+        <div class="card"><h3>Server software</h3><div id="sw-bars"></div></div>
+        <div class="card"><h3>Versions</h3><div id="ver-bars"></div></div>
+      </div>
+      <div class="card"><h3>Recent security alerts</h3><div id="ov-alerts"></div></div>
+    </section>
+
+    <!-- DISCOVERY -->
+    <section id="view-discovery" class="view" hidden>
+      <header><h2>Discovery engine</h2><button class="ghost" id="recheck">Re-check known servers</button></header>
+      <div class="grid2">
+        <form id="scan-form" class="card">
+          <h3>New scan job</h3>
+          <label>Targets <span class="muted">(one per line: IP, CIDR, hostname, or host:port)</span>
+            <textarea id="scan-targets" rows="5" placeholder="e.g. 198.51.100.0/24" required></textarea></label>
+          <div class="row">
+            <label>Ports <input id="scan-ports" value="25565"></label>
+            <label>Rate (conn/s) <input id="scan-rate" type="number" min="1" placeholder="default"></label>
+            <label>Concurrency <input id="scan-conc" type="number" min="1" placeholder="default"></label>
+          </div>
+          <p class="muted small" id="scan-policy"></p>
+          <button class="primary" type="submit">Start scan</button>
+          <p class="err" id="scan-err"></p>
+        </form>
+        <div class="card">
+          <h3>Exclusions / opt-outs</h3>
+          <p class="muted small">Ranges here are never scanned. Adding one also deletes any data already
+            collected from it.</p>
+          <form id="excl-form" class="row">
+            <input id="excl-cidr" placeholder="CIDR, e.g. 192.0.2.0/24" required>
+            <input id="excl-reason" placeholder="Reason">
+            <button type="submit">Add</button>
+          </form>
+          <div id="excl-list"></div>
+        </div>
+      </div>
+      <div class="card"><h3>Jobs</h3><div id="jobs"></div></div>
+    </section>
+
+    <!-- SERVERS -->
+    <section id="view-servers" class="view" hidden>
+      <header><h2>Server index</h2>
+        <div class="row"><button class="ghost" id="exp-csv">Export CSV</button>
+          <button class="ghost" id="exp-json">Export JSON</button></div></header>
+      <form id="srv-filter" class="card filters">
+        <input id="f-q" placeholder="Search name / description / version">
+        <select id="f-software"><option value="">Any software</option></select>
+        <input id="f-version" placeholder="Version (e.g. 1.21)">
+        <select id="f-online"><option value="">Any status</option><option value="true">Online</option>
+          <option value="false">Offline</option></select>
+        <select id="f-mod"><option value="">Modded or not</option><option value="any">Modded only</option>
+          <option value="Forge">Forge</option><option value="Fabric">Fabric</option></select>
+        <input id="f-minp" type="number" min="0" placeholder="Min players">
+        <select id="f-sort"><option value="players">Most players</option><option value="recent">Recently seen</option>
+          <option value="first">Newly discovered</option><option value="latency">Lowest latency</option>
+          <option value="name">Name</option></select>
+        <button class="primary" type="submit">Apply</button>
+      </form>
+      <p class="muted small">Connection endpoints are never shown or exported. Servers are identified by
+        an opaque ID.</p>
+      <div class="card table-wrap"><table id="srv-table"><thead><tr>
+        <th>Server</th><th>Version</th><th>Software</th><th>Players</th><th>Status</th><th>Last seen</th>
+      </tr></thead><tbody></tbody></table></div>
+      <div class="pager"><button id="pg-prev" class="ghost">Prev</button><span id="pg-info"></span>
+        <button id="pg-next" class="ghost">Next</button></div>
+    </section>
+
+    <!-- PLAYERS -->
+    <section id="view-players" class="view" hidden>
+      <header><h2>Player search</h2></header>
+      <form id="player-form" class="card row">
+        <input id="player-q" placeholder="Username or UUID" required>
+        <button class="primary" type="submit">Search</button>
+      </form>
+      <div id="player-out"></div>
+    </section>
+
+    <!-- PROFILE (opened from search/alerts) -->
+    <section id="view-profile" class="view" hidden>
+      <header><h2 id="prof-title">Player profile</h2>
+        <div class="row"><button class="ghost" data-report="md">Report (.md)</button>
+          <button class="ghost" data-report="csv">CSV</button><button class="ghost" data-report="json">JSON</button>
+        </div></header>
+      <div id="prof-out"></div>
+    </section>
+
+    <!-- IDENTITY -->
+    <section id="view-identity" class="view" hidden>
+      <header><h2>Cracked-account tools</h2></header>
+      <div class="grid2">
+        <form id="verify-form" class="card">
+          <h3>Verify identity</h3>
+          <label>Username or UUID <input id="v-q" required></label>
+          <label>Seen with username <span class="muted">(optional, for UUID consistency)</span>
+            <input id="v-name"></label>
+          <button class="primary" type="submit">Verify</button>
+          <div id="verify-out"></div>
+        </form>
+        <form id="compare-form" class="card">
+          <h3>Compare two identities</h3>
+          <p class="muted small">Checks whether a reported UUID is the real premium account for a name, the
+            offline clone, or neither.</p>
+          <label>Username <input id="c-name" required></label>
+          <label>UUID reported by your server <input id="c-uuid" required></label>
+          <button class="primary" type="submit">Compare</button>
+          <div id="compare-out"></div>
+        </form>
+      </div>
+    </section>
+
+    <!-- ALERTS -->
+    <section id="view-alerts" class="view" hidden>
+      <header><h2>Security alerts</h2>
+        <div class="row"><select id="al-type"><option value="">All types</option>
+          <option value="simultaneous_same_name">Simultaneous same name</option>
+          <option value="simultaneous_same_uuid">Simultaneous same UUID</option>
+          <option value="possible_ban_evasion">Possible ban evasion</option>
+          <option value="duplicate_name">Duplicate name</option></select>
+          <select id="al-days"><option>7</option><option selected>30</option><option>90</option></select></div>
+      </header>
+      <div class="card" id="alerts-out"></div>
+    </section>
+
+    <!-- FEDERATION -->
+    <section id="view-federation" class="view" hidden>
+      <header><h2>Moderation federation</h2></header>
+      <p class="muted">Participating servers push their own login, logout and punishment records with an API
+        key. Player-level data here comes only from them.</p>
+      <div class="grid2">
+        <form id="fed-form" class="card">
+          <h3>Register participating server</h3>
+          <label>Name <input id="fed-name" required maxlength="80"></label>
+          <label>Description <input id="fed-desc" maxlength="500"></label>
+          <label>Auth mode <select id="fed-mode"><option value="">Unknown</option>
+            <option value="true">Online-mode (premium)</option><option value="false">Offline-mode (cracked)</option>
+          </select></label>
+          <button class="primary" type="submit">Register</button>
+          <div id="fed-secret"></div>
+        </form>
+        <div class="card"><h3>Ingest API</h3><pre id="ingest-doc" class="code"></pre></div>
+      </div>
+      <div class="card table-wrap"><table id="fed-table"><thead><tr><th>Server</th><th>Mode</th><th>Sessions</th>
+        <th>Punishments</th><th>Online now</th><th>Last report</th><th></th></tr></thead><tbody></tbody></table></div>
+    </section>
+  </main>
+</div>
+
+<div id="drawer" class="drawer" hidden><div class="drawer-body card"><button class="close" id="drawer-close">×</button>
+  <div id="drawer-content"></div></div></div>
+<script src="/static/app.js"></script>
+</body>
+</html>

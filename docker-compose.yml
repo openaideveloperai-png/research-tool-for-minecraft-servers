@@ -1,0 +1,13 @@
+services:
+  mcsec:
+    build: .
+    ports:
+      - "127.0.0.1:8080:8080"   # put a TLS reverse proxy in front; don't expose directly
+    environment:
+      MCSEC_ADMIN_TOKEN: ${MCSEC_ADMIN_TOKEN:?set MCSEC_ADMIN_TOKEN}
+      MCSEC_SCAN_RATE: "50"
+      MCSEC_SCAN_RATE_MAX: "1000"
+    volumes:
+      - mcsec-data:/data
+volumes:
+  mcsec-data:
